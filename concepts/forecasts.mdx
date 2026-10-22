@@ -1,0 +1,57 @@
+---
+title: "Forecasts and orders"
+description: "How a forecast becomes a trade, and how to describe yours."
+---
+
+You describe what you believe, and VibeKast turns it into one buy that moves the market toward your view. Your position after the trade is your forecast.
+
+## Two ways to describe a forecast
+
+<Tabs>
+  <Tab title="Quantiles (easiest)">
+    Seven prices: your 5th, 10th, 25th, 50th, 75th, 90th and 95th percentiles for the settlement price.
+
+    ```json
+    { "quantiles": [72000, 74500, 77000, 79000, 81000, 83500, 86000], "budget": 10 }
+    ```
+
+    VibeKast draws a piecewise-linear cumulative distribution through those points and reads off the probability of each of the 26 ranges. Anything below your 5th or above your 95th percentile goes to the edge ranges.
+  </Tab>
+  <Tab title="Probabilities">
+    26 numbers, one per range in grid order, that you think are each range's chance. They're normalised for you, so they don't have to add up to exactly 1.
+
+    ```json
+    { "probs": [0, 0, 0.01, 0.02, ...], "budget": 10 }
+    ```
+
+    Use this when your model already outputs a distribution over the grid. Read the grid from `GET /api/v2/markets/latest`.
+  </Tab>
+</Tabs>
+
+Send one or the other, not both.
+
+## How the order is built
+
+The trade only buys. For each range it compares your probability $$t_i$$ with the market's price $$p_i$$ and buys more shares where you're more confident than the crowd, in proportion to $$\max(0, \ln(t_i / p_i))$$. That is the trade that moves an LMSR book toward your distribution. It then scales the order so the total cost, fee included, fits your budget.
+
+The response contains the shares per range, an on-chain quote, a `maxCost` spend cap, and unsigned transactions: an `approve` of the market's tUSDC (only if your allowance is too low) followed by one `buy`.
+
+## Limits
+
+| | |
+| --- | --- |
+| Budget | 1 to 10,000 tUSDC, fee included |
+| Slippage | Default 1% (100 bps), maximum 5% |
+| `maxCost` | Never more than budget × (1 + slippage) |
+
+## When there's no trade to make
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `FORECAST_TOO_CLOSE` | Your forecast is too close to the market's current prices for a trade to change anything. | Disagree with the crowd somewhere, or raise the budget. |
+| `PRICE_MOVED` | The market moved and the trade now costs more than your budget allows. | Build the order again. |
+| `MARKET_CLOSED` | The market is closed for trading. | Wait for Monday's market. |
+
+## What scores well
+
+Season points reward **calibration**: putting probability where Bitcoin actually settles, without being overconfident. A tight forecast that's right scores best; a tight forecast that's wrong scores worse than a wide honest one. Size doesn't matter beyond the 5 tUSDC minimum. See [Season scoring](/concepts/season).

@@ -1,0 +1,71 @@
+---
+title: "How markets work"
+description: "The weekly cycle, the 26 ranges, pricing, fees, settlement and payouts."
+---
+
+## The weekly cycle
+
+| When (UTC) | What happens |
+| --- | --- |
+| Monday, shortly after 00:00 | A new market opens. The grid of ranges is centred on Bitcoin's Chainlink price at that moment. |
+| All week | Anyone can buy or sell shares in any range. |
+| Final 6 hours | The trading fee ramps from 1% to 3%. |
+| Sunday 23:59 | Trading stops. |
+| After close | The market settles on the Chainlink feed and winning shares become redeemable for 1 tUSDC each. |
+
+Deploying, settling and rolling to the next week are automated. The current market is always `latest()` on the on-chain [MarketRegistry](/resources/contracts), or `GET /api/v2/markets/latest`.
+
+## Ranges
+
+Each market splits a price span into **26 equal-width ranges**. The width is chosen each week from Bitcoin's recent realized volatility, measured on the Chainlink feed itself: each range is at least about a quarter of a weekly standard deviation wide, so the whole grid spans at least seven. Widths are round numbers (for example $1,000 or $2,500), every edge is a multiple of the width, and the opening price sits near the middle.
+
+The first and last ranges are open-ended: a settlement below the grid counts as the lowest range, and above it counts as the highest.
+
+## Prices are probabilities
+
+A share in a range pays 1 tUSDC if Bitcoin settles inside that range, and nothing otherwise. Its price is therefore the market's probability for that range, and the 26 prices always add up to 1.
+
+Prices come from a **standard multi-outcome LMSR** (logarithmic market scoring rule) with a fixed liquidity parameter **b = 800**:
+
+$$C(q) = b \cdot \ln \sum_i e^{q_i / b}$$
+
+where $$q_i$$ is the number of shares outstanding in range $$i$$. Buying shares in a range raises its price and lowers the others. The market maker is always willing to trade, and its worst-case loss is bounded by $$b \cdot \ln 26 \approx 2{,}606$$ tUSDC, which is the subsidy each market starts with.
+
+## Fees
+
+| | |
+| --- | --- |
+| Base fee | 1% of the trade's cost |
+| Close-window ramp | Rises linearly to 3% over the final 6 hours |
+
+The fee sits outside the cost function, so it never distorts prices. Always quote with `quoteBuy` or the API's order endpoint rather than assuming the base rate; `currentFeeBps()` on the market returns the live fee.
+
+## Settlement
+
+The market settles on the **time-weighted average of the Chainlink BTC/USD feed over the final two hours** before close, not on a single print. Averaging makes the outcome far more expensive to manipulate than one round would be.
+
+Settlement is permissionless: anyone can call it once Chainlink has published a round after close, and the contracts check that round's position in the feed history themselves.
+
+<Note>
+Near a range boundary, the two-hour average can land in a different range from the price at exactly 23:59. The average is what counts.
+</Note>
+
+## Payouts
+
+| Outcome | What you get |
+| --- | --- |
+| **Settled** | Each share in the winning range redeems for 1 tUSDC. Other shares pay nothing. |
+| **Voided** | If the feed can provably never settle the market, anyone can void it 3 days after close. Every share then redeems at the market's final price for its range. |
+
+Redeem from the [Trade page](https://www.vibekast.xyz/trade) or by calling `redeem()` (or `redeemVoided()`) on the market contract. Claims are not automatic yet.
+
+## Market status
+
+The API reports one of four statuses:
+
+| Status | Meaning |
+| --- | --- |
+| `open` | Trading. |
+| `closed` | Past close, waiting for settlement. |
+| `settled` | Resolved on the Chainlink price; winning shares pay 1 tUSDC. |
+| `voided` | Could never settle; positions redeem at final market prices. |

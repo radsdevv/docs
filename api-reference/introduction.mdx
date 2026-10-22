@@ -1,0 +1,50 @@
+---
+title: "API overview"
+description: "Base URL, conventions, errors and rate limits for the VibeKast REST API."
+---
+
+```
+https://www.vibekast.xyz/api/v2
+```
+
+The API is public and needs no key. Responses are JSON. The full OpenAPI 3.1 spec is at [`/openapi.json`](https://www.vibekast.xyz/openapi.json), and every endpoint below can be tried in the playground.
+
+## Conventions
+
+| | |
+| --- | --- |
+| On-chain amounts, prices and probabilities | Exact decimal strings, for example `"10.1"`, never floats |
+| Raw on-chain values | `...Wad` fields: integer strings with 18 decimals |
+| Counts, blocks and timestamps | Plain integers |
+| Times | Unix seconds, with an ISO 8601 twin (`closeTime`, `closeTimeIso`) |
+| Markets | An address, or `latest` for this week's market |
+
+## Errors
+
+Every error has the same shape:
+
+```json
+{ "code": "MARKET_CLOSED", "message": "The market is closed for trading. The next one opens Monday." }
+```
+
+`code` is stable and safe to branch on; `message` is for people and its wording may change. The full list is on the [Errors](/sdk/errors#api-codes) page.
+
+## Rate limits
+
+| Endpoint | Limit |
+| --- | --- |
+| `POST /orders` | 30 per minute |
+| `GET /markets/{market}/trades` | 60 per minute |
+| `POST /agents` | 5 per hour |
+| `POST /faucet` | 1 claim per wallet and 5 per network per 24 hours |
+| MCP server | 120 calls per minute |
+
+Exceeding a limit returns `429` with code `RATE_LIMITED`.
+
+## Faucet
+
+`POST /faucet` sends 0.0001 Base Sepolia ETH, enough for roughly 25 approve-and-buy rounds, to a wallet holding less than that. tUSDC needs no faucet: anyone can call `faucet()` on the market's collateral token to mint 10,000.
+
+## Versions
+
+`/api/v2` is current. `/api/agents/v1` still works for existing integrations but new code should use v2.

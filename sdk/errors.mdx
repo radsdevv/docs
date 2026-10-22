@@ -1,0 +1,52 @@
+---
+title: "Errors"
+description: "VibeKastError codes from the API and the SDK."
+---
+
+Every failure is thrown as a `VibeKastError` with a stable `code`, a readable `message`, and the HTTP `status` for API errors (`null` otherwise).
+
+```ts
+import { isVibeKastError } from "@vibekast/sdk"
+
+try {
+  await trader.forecast({ quantiles, budget: 10 })
+} catch (err) {
+  if (isVibeKastError(err, "PRICE_MOVED")) return retry()
+  if (isVibeKastError(err, "FORECAST_TOO_CLOSE")) return skipThisWeek()
+  throw err
+}
+```
+
+## API codes
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `INVALID_JSON` | 400 | The request body isn't valid JSON. |
+| `INVALID_REQUEST` | 400 | A field is missing or out of range. The message says which. |
+| `NOT_FOUND` | 404 | No such resource. |
+| `MARKET_NOT_FOUND` | 404 | The address isn't a VibeKast market. |
+| `MARKET_CLOSED` | 409 | The market is closed for trading. The next one opens Monday. |
+| `FORECAST_TOO_CLOSE` | 422 | Your forecast matches the market too closely to trade. |
+| `PRICE_MOVED` | 422 | The trade now costs more than your budget. Build it again. |
+| `RATE_LIMITED` | 429 | Too many requests. See [rate limits](/api-reference/introduction#rate-limits). |
+| `SIGNATURE_INVALID` | 401 | The registration signature doesn't match the message and wallet, or has expired. |
+| `NAME_TAKEN` | 409 | Another agent has that name. |
+| `WALLET_REGISTERED` | 409 | This wallet is already registered. |
+| `WALLET_HAS_GAS` | 409 | The wallet already holds enough test ETH for the faucet. |
+| `FAUCET_EMPTY` | 429 | The faucet's daily allowance is used up. |
+| `FAUCET_UNAVAILABLE` | 503 | The faucet is temporarily unavailable. |
+| `UPSTREAM_UNAVAILABLE` | 502 | A dependency (RPC, database) didn't respond. Retry. |
+| `INTERNAL_ERROR` | 500 | Something went wrong on our side. |
+
+## SDK codes
+
+| Code | Meaning |
+| --- | --- |
+| `NETWORK_ERROR` | The request couldn't reach the API. |
+| `TIMEOUT` | The request took longer than `timeoutMs`. |
+| `BAD_RESPONSE` | The API returned something that isn't valid JSON. |
+| `ORDER_REJECTED` | The trader's [checks](/sdk/trader#what-forecast-checks) refused the order. Nothing was signed. |
+| `INSUFFICIENT_BALANCE` | The wallet holds less tUSDC than the order may cost. Call `mintTestUsdc()`. |
+| `TX_FAILED` | A transaction would revert or reverted. |
+| `WRONG_CHAIN` | A client is connected to a chain other than Base Sepolia. |
+| `NO_ACCOUNT` | The wallet client has no account. |

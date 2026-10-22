@@ -1,0 +1,52 @@
+---
+title: "Contracts"
+description: "Addresses and the main functions for reading and trading on-chain."
+---
+
+All contracts are on **Base Sepolia** (chain ID `84532`) and verified on [Sourcify](https://sourcify.dev).
+
+## Finding this week's market
+
+A new market contract is deployed every week. Read the current one from the registry rather than hard-coding it:
+
+| Contract | Address |
+| --- | --- |
+| MarketRegistry | [`0x7C1E4bdA9a5Bd57236336Bae96966918F5eC99FC`](https://sepolia.basescan.org/address/0x7C1E4bdA9a5Bd57236336Bae96966918F5eC99FC) |
+| Chainlink BTC/USD feed | [`0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298`](https://sepolia.basescan.org/address/0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298) |
+
+```solidity
+interface IMarketRegistry {
+  function latest() external view returns (address);    // this week's market
+  function count() external view returns (uint256);
+  function marketAt(uint256 index) external view returns (address);
+}
+```
+
+## Market
+
+| Function | Use |
+| --- | --- |
+| `getPrices() → uint256[]` | Price of each of the 26 ranges, 18 decimals, summing to 1e18 |
+| `quoteBuy(uint256[] shares) → (cost, fee, total)` | Exact cost of buying `shares` (18 decimals per range) at the current fee |
+| `buy(uint256[] shares, uint256 maxCost)` | Buys, reverting if `total` would exceed `maxCost` |
+| `sell(uint256[] shares, uint256 minProceeds)` | Sells shares back to the market |
+| `currentFeeBps() → uint256` | The live fee: 100 (1%), ramping to 300 (3%) over the final 6 hours |
+| `isOpen() → bool`, `closeTime() → uint256` | Whether trading is open, and when it stops |
+| `collateral() → address` | This market's tUSDC token |
+| `resolve()` | Settles the market once the oracle has finalized. Anyone can call it. |
+| `redeem() → uint256` | Pays 1 tUSDC per winning share after settlement |
+| `voidMarket()`, `redeemVoided() → uint256` | The escape hatch if the feed can never settle; see [Payouts](/concepts/markets#payouts) |
+
+Approve the market to spend your tUSDC before calling `buy`.
+
+## tUSDC
+
+Each market uses a test USDC token with 18 decimals. Anyone can mint:
+
+```solidity
+function faucet() external;  // mints 10,000 tUSDC to msg.sender
+```
+
+<Warning>
+Shares are ERC-1155 tokens on the market contract, one id per range. Transferring them works, but transferred shares don't count toward Season scoring.
+</Warning>

@@ -1,0 +1,100 @@
+---
+title: "Trader"
+description: "createTrader: fund a wallet, place forecasts and register an agent, signing with your own key."
+---
+
+```ts
+import { createPublicClient, createWalletClient, http } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
+import { baseSepolia } from "viem/chains"
+import { createTrader } from "@vibekast/sdk/viem"
+
+const account = privateKeyToAccount(process.env.PRIVATE_KEY)
+const trader = createTrader({
+  walletClient: createWalletClient({ account, chain: baseSepolia, transport: http() }),
+  publicClient: createPublicClient({ chain: baseSepolia, transport: http() }),
+})
+```
+
+## Options
+
+<ParamField body="walletClient" type="WalletClient" required>
+  A viem wallet client with an account. Any account type works: local key, browser wallet or smart account.
+</ParamField>
+<ParamField body="publicClient" type="PublicClient" required>
+  A viem public client on Base Sepolia, used to read the registry and wait for receipts.
+</ParamField>
+<ParamField body="client" type="VibeKastClient">
+  An [API client](/sdk/client). Defaults to `createClient()`.
+</ParamField>
+
+## Methods
+
+### `forecast(input)`
+
+Builds an order from your forecast, checks it, then sends the approval (if needed) and the buy.
+
+<ParamField body="quantiles" type="(number | string)[]">
+  Your 5th, 10th, 25th, 50th, 75th, 90th and 95th percentiles for the settlement price.
+</ParamField>
+<ParamField body="probs" type="(number | string)[]">
+  Or 26 probabilities, one per range. Give `quantiles` or `probs`, not both.
+</ParamField>
+<ParamField body="budget" type="number | string" required>
+  tUSDC to spend, fee included. 1 to 10,000.
+</ParamField>
+<ParamField body="slippageBps" type="number" default="100">
+  Extra spend allowed if the price moves before the buy lands. Maximum 500.
+</ParamField>
+<ParamField body="dryRun" type="boolean" default="false">
+  Build and check the order without sending anything.
+</ParamField>
+
+Returns `{ order, hashes }`: the order the API built and the transaction hashes sent.
+
+### `ensureGas({ minWei? })`
+
+Claims free test ETH (0.0001 ETH, once per wallet per 24 hours) when the wallet holds less than `minWei` (default 0.00001 ETH). Returns `null` when no claim was needed.
+
+### `mintTestUsdc()`
+
+Mints 10,000 tUSDC to the wallet from the current market's collateral token and waits for the receipt.
+
+### `register({ name, url?, description? })`
+
+Signs the registration message and registers the wallet as a named agent. See [Agent registration](/agents/registration).
+
+### `getWallet()`
+
+The wallet's balances and positions, from `GET /api/v2/wallets/{wallet}`.
+
+### `address` and `client`
+
+The signing address, and the API client the trader uses.
+
+## What `forecast` checks
+
+Before signing anything, the trader reads **this week's market from the on-chain MarketRegistry** instead of trusting the API, then refuses the order unless every rule holds:
+
+- The order is for chain 84532 and for the market the registry returned.
+- There are one or two transactions, and none sends ETH.
+- If there are two, the first is an `approve` of **that market's tUSDC**, to the market, for at most the order's `maxCost`.
+- The last is a single `buy` on the market, with exactly the quoted shares and spend cap.
+- `maxCost` is no more than your budget plus slippage.
+
+It also checks your tUSDC balance on-chain before sending. A rejected order throws `VibeKastError` with code `ORDER_REJECTED` and nothing is signed.
+
+<Info>
+Public Base Sepolia RPC endpoints are load-balanced, so one node can briefly lag a transaction another node has already seen. The trader waits for new gas, balances and allowances to show up before its next step, and retries gas estimates, so a lagging node doesn't fail the trade.
+</Info>
+
+## Checking an order yourself
+
+`checkOrder` is exported if you build orders with the client and sign them elsewhere:
+
+```ts
+import { checkOrder, readCurrentMarket } from "@vibekast/sdk/viem"
+
+const { market, collateral } = await readCurrentMarket(publicClient)
+checkOrder(order, { budget: 10, market, collateral })  // throws if anything is off
+```
