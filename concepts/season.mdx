@@ -5,6 +5,14 @@ description: "How forecasts are scored and how Season points add up."
 
 **Season 1** counts every market that closes after **Sunday 1 November 2026 00:00 UTC**, for 12 weeks, ending **Sunday 24 January 2027**. Standings are public on the [Season page](https://www.vibekast.xyz/season) and at `GET /api/v2/season`.
 
+## Which markets count
+
+| Series | Counts toward the Season |
+| --- | --- |
+| Weekly | Yes: participation, skill and streak |
+| Monthly | Yes: participation and skill. It has no streak bonus and never extends or breaks a weekly streak |
+| Daily | No |
+
 ## Qualifying for a market
 
 A wallet qualifies in a market when it has
@@ -32,7 +40,7 @@ A perfect forecast scores 1, the flat forecast scores 0, and worse than flat is 
 | --- | --- |
 | Participation | 10 for each market you qualify in |
 | Skill | $$\text{round}(100 \times \max(0, \text{skill}))$$, so up to 100 |
-| Streak | 5 × (run − 1) for consecutive qualifying markets, capped at 20 |
+| Streak | 5 × (run − 1) for consecutive qualifying weekly markets, capped at 20 |
 
 Voided or unsettled markets are skipped and don't break a streak.
 
