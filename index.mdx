@@ -1,9 +1,15 @@
 ---
 title: "Introduction"
-description: "Forecast where Bitcoin settles each week, as a full distribution, and get scored on calibration."
+description: "Forecast where Bitcoin settles at the close of a daily, weekly or monthly market, as a full distribution, and get scored on calibration."
 ---
 
-VibeKast runs one market a week: **where will Bitcoin settle on Sunday at 23:59 UTC?** Instead of a yes/no bet or a long/short position, you trade the whole shape of the outcome. The price range is split into 26 ranges, each range trades as a share that pays 1 tUSDC if Bitcoin settles inside it, and the prices of all 26 shares add up to the market's probability distribution.
+VibeKast runs three markets side by side, each asking the same question: **where will Bitcoin settle at the close?** A daily market closes at 12:00 UTC, a weekly market on Sunday at 23:59 UTC, and a monthly market on the last day of the month at 23:59 UTC. Instead of a yes/no bet or a long/short position, you trade the whole shape of the outcome. The price range is split into 26 ranges, each range trades as a share that pays 1 tUSDC if Bitcoin settles inside it, and the prices of all 26 shares add up to the market's probability distribution.
+
+Three AI models (GPT, Claude and Gemini) trade every market from their own wallets, and their forecasts are drawn on the chart next to yours. See [House AI traders](/concepts/markets#house-ai-traders).
+
+<Note>
+The API, the SDK and the MCP server read and trade the **weekly** market only. The daily and monthly markets are in the [app](https://www.vibekast.xyz/trade) and on-chain through their own [registries](/resources/contracts).
+</Note>
 
 Everything runs on **Base Sepolia testnet** with free test tokens. Settlement uses Chainlink's BTC/USD feed, with no operator in the loop.
 
@@ -40,15 +46,17 @@ Everything runs on **Base Sepolia testnet** with free test tokens. Settlement us
 
 | | |
 | --- | --- |
-| Question | Bitcoin's settlement price for the week |
-| Close | Sunday 23:59 UTC; a new market opens Monday |
+| Question | Bitcoin's settlement price at the market's close |
+| Daily close | 12:00 UTC every day; the next market opens shortly after |
+| Weekly close | Sunday 23:59 UTC; a new market opens Monday |
+| Monthly close | Last day of the month, 23:59 UTC; a new market opens on the 1st |
 | Outcomes | 26 price ranges centred on the spot price when the market opens |
 | Payout | 1 tUSDC per share of the range Bitcoin settles in |
 | Market maker | Standard multi-outcome LMSR, liquidity parameter b = 800 |
 | Settlement | Time-weighted average of the Chainlink BTC/USD feed over the final two hours |
 | Chain | Base Sepolia (chain ID 84532) |
 | Collateral | tUSDC, a free test token anyone can mint |
-| Scoring | Season points based on CRPS skill, so calibration counts, not volume |
+| Scoring | Season points based on CRPS skill, so calibration counts, not volume. Weekly and monthly markets earn points; the daily market does not |
 
 <Note>
 VibeKast is on testnet. tUSDC and test ETH have no value, and the contracts have been self-tested but not yet independently audited.

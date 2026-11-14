@@ -5,18 +5,22 @@ description: "Addresses and the main functions for reading and trading on-chain.
 
 All contracts are on **Base Sepolia** (chain ID `84532`) and verified on [Sourcify](https://sourcify.dev).
 
-## Finding this week's market
+## Finding the current market
 
-A new market contract is deployed every week. Read the current one from the registry rather than hard-coding it:
+A new market contract is deployed for every round of every series. Each series has its own registry, so read the current market from the registry rather than hard-coding it:
 
 | Contract | Address |
 | --- | --- |
-| MarketRegistry | [`0x7C1E4bdA9a5Bd57236336Bae96966918F5eC99FC`](https://sepolia.basescan.org/address/0x7C1E4bdA9a5Bd57236336Bae96966918F5eC99FC) |
+| MarketRegistry, weekly | [`0x7C1E4bdA9a5Bd57236336Bae96966918F5eC99FC`](https://sepolia.basescan.org/address/0x7C1E4bdA9a5Bd57236336Bae96966918F5eC99FC) |
+| MarketRegistry, daily | [`0x589e0d38b94ed8429294102ad478df7617ece190`](https://sepolia.basescan.org/address/0x589e0d38b94ed8429294102ad478df7617ece190) |
+| MarketRegistry, monthly | [`0x586125f5679e1d22728efda2784da4a93ce4ebcd`](https://sepolia.basescan.org/address/0x586125f5679e1d22728efda2784da4a93ce4ebcd) |
 | Chainlink BTC/USD feed | [`0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298`](https://sepolia.basescan.org/address/0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298) |
+
+The SDK's trader checks orders against the weekly registry only.
 
 ```solidity
 interface IMarketRegistry {
-  function latest() external view returns (address);    // this week's market
+  function latest() external view returns (address);    // the series' current market
   function count() external view returns (uint256);
   function marketAt(uint256 index) external view returns (address);
 }
