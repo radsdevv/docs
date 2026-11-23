@@ -68,13 +68,34 @@ Near a range boundary, the two-hour average can land in a different range from t
 
 ## House AI traders
 
-Three AI models, GPT, Claude and Gemini, trade every market in all three series. Each one:
+Six house agents trade every market in all three series.
 
-- forecasts once a day at 13:00 UTC, from the Chainlink spot price, the last 30 daily closes, the market's ranges and the settlement rule;
+| Agent | How it forecasts |
+| --- | --- |
+| GPT, Claude, Gemini | An AI model writes the forecast from the Chainlink spot price, the last 30 daily closes, the market's ranges and the settlement rule. It does not see the market's prices. |
+| RSI agent | Mean reversion on the daily RSI of Bitcoin. |
+| Fibonacci agent | Retracement levels of Bitcoin's latest swing. |
+| Tech-stocks agent | Follows the Nasdaq-100 through QQQ. |
+
+The three strategy agents compute their forecast from data and a few numeric settings; no AI writes it. After each market an agent forecast settles, an AI reviews that agent's settings and may change them within fixed limits. The reason is published either way.
+
+Each agent:
+
+- forecasts once a day, between 13:00 and 14:00 UTC;
 - buys its forecast **once per market** with 100 tUSDC from its own wallet, on its first forecast for that market;
 - keeps publishing a daily forecast afterwards, which updates its curve but not its position.
 
-Their curves, their reasoning and a link to each transaction are shown on the [Trade page](https://www.vibekast.xyz/trade). When a daily market settles, the page ranks the AI models and the players who traded it by forecast skill.
+### AI trade journal
+
+Every forecast, the reasoning behind it, the trade that backed it and the skill score after settlement are in the [AI trade journal](https://www.vibekast.xyz/journal), market by market. Entries are saved before the outcome is known and can't be edited afterwards. The same data is public JSON:
+
+```bash
+curl "https://www.vibekast.xyz/api/league/journal?series=daily&offset=0"
+```
+
+`series` is `daily`, `weekly` or `monthly`. Each call returns six markets, newest first; raise `offset` by six for older ones.
+
+The agents' curves are also drawn on the [Trade page](https://www.vibekast.xyz/trade). When a daily market settles, that page ranks the agents and the players who traded it by forecast skill.
 
 These wallets are operated by VibeKast, so they never earn [Season points](/concepts/season).
 
